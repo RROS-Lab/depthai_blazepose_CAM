@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import Util as util
 from o3d_utils import Visu3D
 import mediapipe_utils as mpu
 
@@ -33,6 +34,10 @@ class BlazeposeRenderer:
         self.show_3d = show_3d
         self.fram = None
         self.pause = False
+
+        # record hand xyz of the last frame
+        self.last_lhand_xyz = None
+        self.last_rhand_xyz = None
 
         # Rendering flags
         self.show_rot_rect = False
@@ -148,13 +153,51 @@ class BlazeposeRenderer:
                     if self.is_present(body, a) and self.is_present(body, b):
                             self.vis3d.add_segment(points[a], points[b], color=colors[i])
         self.vis3d.render()
-                
-        
+
+
+    def detect_human(self, body):
+        left_foot_pixel = body.landmarks[mpu.KEYPOINT_DICT['left_foot_index']][:2]
+        right_foot_pixel = body.landmarks[mpu.KEYPOINT_DICT['right_foot_index']][:2]
+        x1 = left_foot_pixel[0]
+        y1 = left_foot_pixel[1]
+        x2 = right_foot_pixel[0]
+        y2 = right_foot_pixel[1]
+        if (util.isInCell(x1, y1) or util.isInCell(x2, y2)):
+            print("a person in the collabrative cell!!!")
+            print("calculating hand velocity")
+            self.calculate_hand_vel(body)
+        else:
+            print("human not in cell")
+
+
+    def calculate_hand_vel(self, body):
+        if self.last_lhand_xyz is not None:
+            dis_left = util.get_distance(self.last_lhand_xyz, body.left_hand_xyz)
+            dis_right = util.get_distance(self.last_rhand_xyz, body.left_hand_xyz)
+            fps = self.tracker.fps.get()
+            body.left_hand_vel = dis_left * fps
+            body.right_hand_vel = dis_right * fps
+            print("left_hand_vel: " + str(body.left_hand_vel))
+            print("right_hand_vel: " + str(body.right_hand_vel))
+        self.last_lhand_xyz = body.left_hand_xyz
+        self.last_rhand_xyz = body.right_hand_xyz
+           
+       
     def draw(self, frame, body):
         if not self.pause:
             self.frame = frame
             if body:
                 self.draw_landmarks(body)
+                # Test: get left heel in pixel
+                # left_heel_xyz = body.landmarks_xyz[26]
+                # print(left_heel_xyz)
+                # print("left_hand_xyz" + str(body.left_hand_xyz))
+                # print("right_hand_xyz" + str(body.right_hand_xyz))
+                self.detect_human(body)
+                
+                
+            else:
+                print("no human")
             self.body = body
         elif self.frame is None:
             self.frame = frame

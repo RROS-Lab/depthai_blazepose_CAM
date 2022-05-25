@@ -1,5 +1,4 @@
 import numpy as np
-from Util import get_distance, image2camera
 import mediapipe_utils as mpu
 import cv2
 from pathlib import Path
@@ -58,12 +57,11 @@ class BlazeposeDepthai:
                 pd_score_thresh=0.5,
                 lm_model=None,
                 lm_score_thresh=0.7,
-                xyz=False,   # default: False
+                xyz=False,
                 crop=False,
                 smoothing= True,
                 internal_fps=None,
                 resolution="full",
-                #resolution="ultra",
                 internal_frame_height=1080,
                 stats=False,
                 trace=False,
@@ -395,64 +393,6 @@ class BlazeposeDepthai:
         else:
             return False
 
-
-    def query_landmarks_xyz(self, body):
-        # body.has_landmarks_xyz = True
-        tmp = np.arange(33 * 3)
-        body.landmarks_xyz = tmp.reshape(33, 3)
-        for i in range(33):   # landmarks: 0-32
-            if self.is_visible(body, i):
-                cur = self.query_landmark_xyz(body, i)               
-                curnp = np.array(cur).reshape(1, 3)
-                # body.landmarks_xyz = np.append(body.landmarks_xyz, curnp, axis=0)
-                body.landmarks_xyz[i] = curnp
-            else:
-                # body.landmarks_xyz = np.append(body.landmarks_xyz, np.zeros(shape=(1,3)), axis=0)
-                body.landmarks_xyz[i] = np.zeros(shape=(1,3))
-            # body.landmarks_xyz = np.append(body.landmarks_xyz, np.array(self.query_landmark_xyz(body, i)), axis=0)
-        print(body.landmarks_xyz)    
-        
-
-    def query_landmark_xyz(self, body, idx):
-        # We want the 3d position (x,y,z) in meters of the body reference keypoint
-        # in the camera coord system.
-           
-        landmark_coords_pixel = body.landmarks[idx][:2]
-
-        # Prepare the request to SpatialLocationCalculator
-        # ROI : small rectangular zone around the reference keypoint
-        zone_size = max(int(body.rect_w_a / 45), 8)
-        roi_center = dai.Point2f(int(landmark_coords_pixel[0] - zone_size/2 + self.crop_w), int(landmark_coords_pixel[1] - zone_size/2))
-        roi_size = dai.Size2f(zone_size, zone_size)
-        # Config
-        conf_data = dai.SpatialLocationCalculatorConfigData()
-        conf_data.depthThresholds.lowerThreshold = 100
-        conf_data.depthThresholds.upperThreshold = 10000
-        conf_data.roi = dai.Rect(roi_center, roi_size)
-        cfg = dai.SpatialLocationCalculatorConfig()
-        cfg.setROIs([conf_data])
-        # spatial_rtrip_time = now()
-        self.q_spatial_config.send(cfg)
-
-        # Receives spatial locations
-        spatial_data = self.q_spatial_data.get().getSpatialLocations()
-        # self.glob_spatial_rtrip_time += now() - spatial_rtrip_time
-        # self.nb_spatial_requests += 1
-        sd = spatial_data[0]
-        
-        landmark_xyz = np.array([
-            sd.spatialCoordinates.x,
-            sd.spatialCoordinates.y,
-            sd.spatialCoordinates.z
-            ])
-        if self.smoothing:
-            landmark_xyz = self.filter_xyz.apply(landmark_xyz)
-        # print("landmark_xyz " + str(idx) + " : ")
-        # print(landmark_xyz)
-        # print("calculate xy in camera space: ")
-        # image2camera(1, body.xyz[1], body.xyz_ref_coords_pixel[0], body.xyz_ref_coords_pixel[1])
-        return landmark_xyz
-
     def query_body_xyz(self, body):
         # We want the 3d position (x,y,z) in meters of the body reference keypoint
         # in the camera coord system.
@@ -467,7 +407,6 @@ class BlazeposeDepthai:
                 body.landmarks[mpu.KEYPOINT_DICT['right_hip']][:2],
                 body.landmarks[mpu.KEYPOINT_DICT['left_hip']][:2]], 
                 axis=0)
-            # print(body.landmarks)
         elif self.is_visible(body, mpu.KEYPOINT_DICT['right_shoulder']) and self.is_visible(body, mpu.KEYPOINT_DICT['left_shoulder']):
             body.xyz_ref = "mid_shoulders"
             body.xyz_ref_coords_pixel = np.mean([
@@ -497,15 +436,12 @@ class BlazeposeDepthai:
         # self.glob_spatial_rtrip_time += now() - spatial_rtrip_time
         # self.nb_spatial_requests += 1
         sd = spatial_data[0]
-        
         body.xyz_zone =  [
             int(sd.config.roi.topLeft().x) - self.crop_w,
             int(sd.config.roi.topLeft().y),
             int(sd.config.roi.bottomRight().x) - self.crop_w,
             int(sd.config.roi.bottomRight().y)
             ]
-        # print("body xyz_zone: ")
-        # print(body.xyz_zone)
         body.xyz = np.array([
             sd.spatialCoordinates.x,
             sd.spatialCoordinates.y,
@@ -513,14 +449,8 @@ class BlazeposeDepthai:
             ])
         if self.smoothing:
             body.xyz = self.filter_xyz.apply(body.xyz)
-        # print("body xyz: ")
-        # print(body.xyz)   
-        # print("calculate xy in camera space: ")
-        # image2camera(1, body.xyz[1], body.xyz_ref_coords_pixel[0], body.xyz_ref_coords_pixel[1])     
         
     def pd_postprocess(self, inference):
-        # self.device.getOutputQueue(name="pd_out", maxSize=4, blocking=True)).get()
-        # scores = self.q_pd_out.get()
         scores = np.array(inference.getLayerFp16("Identity_1"), dtype=np.float16) # 2254
         bboxes = np.array(inference.getLayerFp16("Identity"), dtype=np.float16).reshape((self.nb_anchors,12)) # 2254x12
         # Decode bboxes
@@ -590,8 +520,6 @@ class BlazeposeDepthai:
             # and translation) is applied to the landmarks to transform them back to
             # original  coordinates.
             body.landmarks_world = np.array(inference.getLayerFp16("Identity_4")).reshape(-1,3)[:self.nb_kps]
-            # print("!!!")
-            # print(inference.getLayerFp16("Identity_4"))
             sin_rot = sin(body.rotation)
             cos_rot = cos(body.rotation)
             rot_m = np.array([[cos_rot, sin_rot], [-sin_rot, cos_rot]])
@@ -624,9 +552,6 @@ class BlazeposeDepthai:
     def next_frame(self):
 
         self.fps.update()
-
-        # print("fps: ")
-        # print(self.fps.get_global())
            
         if self.input_type == "rgb":
             in_video = self.q_video.get()
@@ -704,21 +629,8 @@ class BlazeposeDepthai:
                     self.filter_landmarks_world.reset()
             else:
                 self.use_previous_landmarks = True
-                
                 if self.xyz:
                     self.query_body_xyz(body)
-                    # self.query_landmarks_xyz(body)  # get all landmarks_xyz
-                    body.left_hand_xyz = self.query_landmark_xyz(body, 19)
-                    body.right_hand_xyz = self.query_landmark_xyz(body, 20)
-
-                    # print("landmarks")
-                    # print(body.landmarks[mpu.KEYPOINT_DICT['right_hip']])
-                    # print(body.landmarks[mpu.KEYPOINT_DICT['left_hip']])
-                    # print(body.landmarks)
-
-                    # print("landmarks_world")
-                    # print(body.landmarks_world[mpu.KEYPOINT_DICT['right_hip']])
-                    # print(body.landmarks_world[mpu.KEYPOINT_DICT['left_hip']])
             
         else:
             self.use_previous_landmarks = False

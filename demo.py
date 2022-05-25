@@ -47,7 +47,8 @@ tracker = BlazeposeDepthai(input_src=args.input,
             pd_model=args.pd_m,
             lm_model=args.lm_m,
             smoothing=not args.no_smoothing,   
-            xyz=args.xyz,            
+            # xyz=args.xyz,            
+            xyz=True,            
             crop=args.crop,
             internal_fps=args.internal_fps,
             internal_frame_height=args.internal_frame_height,
@@ -63,6 +64,12 @@ renderer = BlazeposeRenderer(
 while True:
     # Run blazepose on next frame
     frame, body = tracker.next_frame()
+
+    # Test: get xyz in camera space
+    # left_heel_xyz = tracker.query_landmark_xyz(body, 27)
+    # if (left_heel_xyz[0] > 400 and left_heel_xyz[1] < 366):
+    #     print("a person in forbidden zone!!! stop the robot!!!")
+    # print(left_heel_xyz)
     if frame is None: break
     # Draw 2d skeleton
     frame = renderer.draw(frame, body)
