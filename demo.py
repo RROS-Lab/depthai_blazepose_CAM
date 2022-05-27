@@ -2,6 +2,8 @@
 
 from BlazeposeRenderer import BlazeposeRenderer
 import argparse
+import gripper_fcn as gf
+import Util as util
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-e', '--edge', action="store_true",
@@ -56,10 +58,16 @@ tracker = BlazeposeDepthai(input_src=args.input,
             stats=True,
             trace=args.trace)   
 
+grip = gf.RobotiqGripper("/dev/ttyUSB1")
+
 renderer = BlazeposeRenderer(
                 tracker, 
                 show_3d=args.show_3d, 
                 output=args.output)
+
+is_hand_gripping = False
+hand_pause_time = 0
+start_time = None
 
 while True:
     # Run blazepose on next frame
@@ -70,6 +78,28 @@ while True:
     # if (left_heel_xyz[0] > 400 and left_heel_xyz[1] < 366):
     #     print("a person in forbidden zone!!! stop the robot!!!")
     # print(left_heel_xyz)
+    if body is not None:
+        left_hand_pixel = body.landmarks[19]
+        right_hand_pixel = body.landmarks[20]
+        
+        if (right_hand_pixel[0] > 220 and right_hand_pixel[0] < 305 and right_hand_pixel[1] > 150 and right_hand_pixel[1] < 210):
+            if is_hand_gripping == False:
+                start_time = util.now()
+            if (util.now() - start_time > 2):
+                util.open_gripper(grip)
+            is_hand_gripping = True
+        else:
+            is_hand_gripping = False
+        #     if hand_pause_time > 2:
+        #         util.open_gripper(grip)
+        #     if start_time is not None and is_hand_gripping == True:
+        #         hand_pause_time += util.now() - start_time
+        #     is_hand_gripping = True
+        # else:
+        #     is_hand_gripping = False
+        #     hand_pause_time = 0
+         
+    # start_time = util.now()
     if frame is None: break
     # Draw 2d skeleton
     frame = renderer.draw(frame, body)

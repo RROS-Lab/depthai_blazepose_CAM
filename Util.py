@@ -1,4 +1,6 @@
 import math
+import gripper_fcn as gf
+import time
 
 def image2camera(resoltion, z, px, py):
     fx = 1485.7717 * resoltion
@@ -23,7 +25,7 @@ def isInCell(x, y):
     # y = 3.89x - 2404.44
     if (y < 345 or y > 590):
         return False
-    if (y < 3.89 * x - 2404.44):
+    if (y < 3.89 * x - 2404.44 or x < 440):
         return False
     return True    
 
@@ -34,3 +36,26 @@ def get_distance(x, y):
     b = x[1] - y[1]
     c = x[2] - y[2]
     return math.sqrt(a * a + b * b + c * c)
+
+
+def open_gripper(grip):
+
+    #grip.resetActivate()
+    # grip.reset()
+    # grip.printInfo()
+    # grip.activate()
+    # grip.printInfo()
+    print("gripper opening ...................")
+    grip.goTo(0)
+    # time.sleep(2)
+    # grip.goTo(230)
+    # time.sleep(2)
+
+def close_gripper(grip):
+
+    print("gripper closing ...................")
+    grip.goTo(205)
+
+# get the system-wise time in sec
+def now():
+    return time.perf_counter()

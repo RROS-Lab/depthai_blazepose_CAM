@@ -81,6 +81,8 @@ class BlazeposeRenderer:
         return body.presence[lm_id] > self.tracker.presence_threshold
 
     def draw_landmarks(self, body):
+        # show bounding box to grip PCB
+        cv2.rectangle(self.fram, (225,175), (305, 210), (0,255,0),3)
         if self.show_rot_rect:
             cv2.polylines(self.frame, [np.array(body.rect_points)], True, (0,255,255), 2, cv2.LINE_AA)
         if self.show_landmarks:                
@@ -164,7 +166,7 @@ class BlazeposeRenderer:
         y2 = right_foot_pixel[1]
         if (util.isInCell(x1, y1) or util.isInCell(x2, y2)):
             print("a person in the collabrative cell!!!")
-            print("calculating hand velocity")
+            print("calculating hand velocity...............")
             self.calculate_hand_vel(body)
         else:
             print("human not in cell")
@@ -174,6 +176,8 @@ class BlazeposeRenderer:
         if self.last_lhand_xyz is not None:
             dis_left = util.get_distance(self.last_lhand_xyz, body.left_hand_xyz)
             dis_right = util.get_distance(self.last_rhand_xyz, body.left_hand_xyz)
+            print("left hand distance: " + str(dis_left))
+            print("right hand distance: " + str(dis_right))
             fps = self.tracker.fps.get()
             body.left_hand_vel = dis_left * fps
             body.right_hand_vel = dis_right * fps
