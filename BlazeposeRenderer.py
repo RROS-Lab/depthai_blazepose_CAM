@@ -128,7 +128,7 @@ class BlazeposeRenderer:
             points = body.landmarks if self.show_3d == "image" else body.landmarks_world
             draw_skeleton = True
             if self.show_3d == "mixed":  
-                if body.xyz_ref:
+                if body.xyz_ref: 
                     """
                     Beware, the y value of landmarks_world coordinates is negative for landmarks 
                     above the mid hips (like shoulders) and negative for landmarks below (like feet).
