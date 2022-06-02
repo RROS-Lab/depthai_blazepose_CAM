@@ -93,7 +93,10 @@ class BlazeposeDepthai:
         self.presence_threshold = 0.5
         self.visibility_threshold = 0.5
 
+        # 14442C10B19060D700 for blazepose
+        # 14442C10F10E3BD400 for gesture
         self.device = dai.Device()
+        found, device_info = dai.Device.getDeviceByMxId("14442C10B19060D700")
         self.xyz = False
         
         if input_src == None or input_src == "rgb" or input_src == "rgb_laconic":
@@ -214,10 +217,12 @@ class BlazeposeDepthai:
         print(f"{self.nb_anchors} anchors have been created")
 
         # Define and start pipeline
+        print("found or not: " + str(found))
         self.pd_input_length = 224
         self.lm_input_length = 256
         usb_speed = self.device.getUsbSpeed()
-        self.device.startPipeline(self.create_pipeline())
+        self.device = dai.Device(self.create_pipeline(), device_info)
+        # self.device.startPipeline(self.create_pipeline())
         print(f"Pipeline started - USB speed: {str(usb_speed).split('.')[-1]}")
 
         # Define data queues 

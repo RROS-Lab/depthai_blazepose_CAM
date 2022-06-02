@@ -9,8 +9,8 @@ if True:
     # grip.activate()
     # grip.printInfo()
     
-    grip.goTo(200)
-    # grip.goTo(0)
+    # grip.goTo(200)
+    grip.goTo(0)
     # grip.reset()
     # grip.goTo(20)
     

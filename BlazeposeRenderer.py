@@ -128,7 +128,7 @@ class BlazeposeRenderer:
             points = body.landmarks if self.show_3d == "image" else body.landmarks_world
             draw_skeleton = True
             if self.show_3d == "mixed":  
-                if body.xyz_ref: 
+                if body.xyz_ref:
                     """
                     Beware, the y value of landmarks_world coordinates is negative for landmarks 
                     above the mid hips (like shoulders) and negative for landmarks below (like feet).
@@ -166,8 +166,8 @@ class BlazeposeRenderer:
         y2 = right_foot_pixel[1]
         if (util.isInCell(x1, y1) or util.isInCell(x2, y2)):
             print("a person in the collabrative cell!!!")
-            print("calculating hand velocity...............")
-            self.calculate_hand_vel(body)
+            # print("calculating hand velocity...............")
+            # self.calculate_hand_vel(body)
         else:
             print("human not in cell")
 
@@ -175,7 +175,11 @@ class BlazeposeRenderer:
     def calculate_hand_vel(self, body):
         if self.last_lhand_xyz is not None:
             dis_left = util.get_distance(self.last_lhand_xyz, body.left_hand_xyz)
-            dis_right = util.get_distance(self.last_rhand_xyz, body.left_hand_xyz)
+            dis_right = util.get_distance(self.last_rhand_xyz, body.right_hand_xyz)
+            print("self.last_lhand_xyz: " + str(self.last_lhand_xyz))
+            print("body.left_hand_xyz: " + str(body.left_hand_xyz))
+            print("self.last_rhand_xyz: " + str(self.last_rhand_xyz))
+            print("body.right_hand_xyz: " + str(body.right_hand_xyz))
             print("left hand distance: " + str(dis_left))
             print("right hand distance: " + str(dis_right))
             fps = self.tracker.fps.get()

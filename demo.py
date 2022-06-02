@@ -82,7 +82,7 @@ while True:
         left_hand_pixel = body.landmarks[19]
         right_hand_pixel = body.landmarks[20]
         
-        if (right_hand_pixel[0] > 220 and right_hand_pixel[0] < 305 and right_hand_pixel[1] > 150 and right_hand_pixel[1] < 210):
+        if (right_hand_pixel[0] > 250 and right_hand_pixel[0] < 313 and right_hand_pixel[1] > 200 and right_hand_pixel[1] < 260):
             if is_hand_gripping == False:
                 start_time = util.now()
             if (util.now() - start_time > 2):
